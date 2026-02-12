@@ -6,5 +6,6 @@
         <property name="connection.password">12345</property>
         <property name="dialect">org.hibernate.dialect.PostgreSQLDialect</property>
         <mapping class="com.example.model.User"/>
+        <property name="hbm2ddl.auto">update</property>
     </session-factory>
 </hibernate-configuration>
