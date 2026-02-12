@@ -1,0 +1,10 @@
+<hibernate-configuration>
+    <session-factory>
+        <property name="connection.driver_class">org.postgresql.Driver</property>
+        <property name="connection.url">jdbc:postgresql://localhost:5438/user-serviceDB</property>
+        <property name="connection.username">user</property>
+        <property name="connection.password">12345</property>
+        <property name="dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+        <mapping class="com.example.model.User"/>
+    </session-factory>
+</hibernate-configuration>
