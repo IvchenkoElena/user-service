@@ -20,4 +20,9 @@ public class HibernateUtil {
     public static SessionFactory getSessionFactory() {
         return sessionFactory;
     }
+
+    // Метод shutdown
+    public static void shutdown() {
+        getSessionFactory().close();
+    }
 }

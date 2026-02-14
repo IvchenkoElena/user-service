@@ -62,6 +62,55 @@ public class UserDaoImpl implements UserDao {
     }
 
     @Override
+    public Optional<User> findByEmail(String email) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        User user = null;
+
+        try {
+            // Используем HQL-запрос с параметром
+            user = session.createQuery(
+                            "FROM User WHERE email = :email",
+                            User.class
+                    )
+                    .setParameter("email", email)
+                    .uniqueResult();
+            if (user != null) {
+                logger.info("Пользователь найден по Email={}. Имя: {}, ID: {}", email, user.getName(), user.getId());
+                return Optional.of(user);
+            } else {
+                logger.warn("Пользователь с Email={} не найден в базе данных.", email);
+                return Optional.empty();
+            }
+        } catch (Exception e) {
+            logger.error("Ошибка при поиске пользователя по Email={}. Сообщение: {}", email, e.getMessage(), e);
+            return Optional.empty();
+        } finally {
+            if (session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public List<User> findAll() {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        List<User> users;
+
+        try {
+            users = session.createQuery("FROM User", User.class).list();
+            logger.info("Получено {} записей из таблицы users.", users.size());
+            return users;
+        } catch (Exception e) {
+            logger.error("Ошибка при получении списка всех пользователей. Сообщение: {}", e.getMessage(), e);
+            return List.of(); // Возвращаем пустой список при ошибке
+        } finally {
+            if (session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
     public void update(User user) {
         Session session = HibernateUtil.getSessionFactory().openSession();
         Transaction transaction = null;
@@ -106,25 +155,6 @@ public class UserDaoImpl implements UserDao {
             }
             logger.error("Ошибка при удалении пользователя с ID={}. Сообщение: {}", id, e.getMessage(), e);
             throw e;
-        } finally {
-            if (session.isOpen()) {
-                session.close();
-            }
-        }
-    }
-
-    @Override
-    public List<User> findAll() {
-        Session session = HibernateUtil.getSessionFactory().openSession();
-        List<User> users;
-
-        try {
-            users = session.createQuery("FROM User", User.class).list();
-            logger.info("Получено {} записей из таблицы users.", users.size());
-            return users;
-        } catch (Exception e) {
-            logger.error("Ошибка при получении списка всех пользователей. Сообщение: {}", e.getMessage(), e);
-            return List.of(); // Возвращаем пустой список при ошибке
         } finally {
             if (session.isOpen()) {
                 session.close();

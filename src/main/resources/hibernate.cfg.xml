@@ -13,6 +13,6 @@
         <property name="hibernate.hbm2ddl.auto">update</property>
 
         <!-- Указываем сущность -->
-        <mapping class="com.example.userservice.model.User"/>
+        <mapping class="aston.model.User"/>
     </session-factory>
 </hibernate-configuration>
