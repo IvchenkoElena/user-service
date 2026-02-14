@@ -5,8 +5,13 @@ import aston.util.HibernateUtil;
 
 import org.hibernate.Session;
 import org.hibernate.Transaction;
+import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.exception.JDBCConnectionException;
+import org.hibernate.exception.SQLGrammarException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.hibernate.*;
+
 
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +29,21 @@ public class UserDaoImpl implements UserDao {
             session.persist(user);
             transaction.commit();
             logger.info("User успешно создан. ID: {}, Email: {}", user.getId(), user.getEmail());
+        } catch (ConstraintViolationException e) {
+            if (transaction != null) transaction.rollback();
+            logger.error("Constraint violation when creating user: {}", e.getSQLException().getMessage());
+            throw new RuntimeException("Нарушение ограничения БД: " + e.getSQLException().getMessage(), e);
+        } catch (JDBCConnectionException e) {
+            if (transaction != null) transaction.rollback();
+            logger.error("Database connection failed: {}", e.getMessage());
+            throw new RuntimeException("Ошибка соединения с БД", e);
+        } catch (SQLGrammarException e) {
+            if (transaction != null) transaction.rollback();
+            logger.error("SQL syntax error: {}", e.getMessage());
+            throw new RuntimeException("Синтаксическая ошибка SQL", e);
+        } catch (TransactionException e) {
+            logger.error("Transaction failed: {}", e.getMessage());
+            throw new RuntimeException("Ошибка транзакции", e);
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
@@ -51,6 +71,12 @@ public class UserDaoImpl implements UserDao {
                 logger.warn("Пользователь с ID={} не найден в базе данных.", id);
                 return Optional.empty();
             }
+        } catch (ObjectNotFoundException e) {
+            logger.warn("User with id {} not found", id);
+            return Optional.empty();
+        } catch (JDBCConnectionException e) {
+            logger.error("Database connection failed: {}", e.getMessage());
+            throw new RuntimeException("Ошибка соединения с БД", e);
         } catch (Exception e) {
             logger.error("Ошибка при поиске пользователя по ID={}. Сообщение: {}", id, e.getMessage(), e);
             return Optional.empty();
@@ -81,6 +107,9 @@ public class UserDaoImpl implements UserDao {
                 logger.warn("Пользователь с Email={} не найден в базе данных.", email);
                 return Optional.empty();
             }
+        } catch (JDBCConnectionException e) {
+            logger.error("Database connection failed: {}", e.getMessage());
+            throw new RuntimeException("Ошибка соединения с БД", e);
         } catch (Exception e) {
             logger.error("Ошибка при поиске пользователя по Email={}. Сообщение: {}", email, e.getMessage(), e);
             return Optional.empty();
@@ -100,6 +129,9 @@ public class UserDaoImpl implements UserDao {
             users = session.createQuery("FROM User", User.class).list();
             logger.info("Получено {} записей из таблицы users.", users.size());
             return users;
+        } catch (JDBCConnectionException e) {
+            logger.error("Database connection failed: {}", e.getMessage());
+            throw new RuntimeException("Ошибка соединения с БД", e);
         } catch (Exception e) {
             logger.error("Ошибка при получении списка всех пользователей. Сообщение: {}", e.getMessage(), e);
             return List.of(); // Возвращаем пустой список при ошибке
@@ -120,6 +152,18 @@ public class UserDaoImpl implements UserDao {
             session.merge(user);
             transaction.commit();
             logger.info("Пользователь успешно обновлён. ID: {}, Email: {}", user.getId(), user.getEmail());
+        } catch (ConstraintViolationException e) {
+            if (transaction != null) transaction.rollback();
+            logger.error("Constraint violation when updating user: {}", e.getSQLException().getMessage());
+            throw new RuntimeException("Нарушение ограничения БД при обновлении", e);
+        } catch (StaleObjectStateException e) {
+            if (transaction != null) transaction.rollback();
+            logger.error("Stale object (optimistic lock): {}", e.getMessage());
+            throw new RuntimeException("Данные устарели (оптимистическая блокировка)", e);
+        } catch (JDBCConnectionException e) {
+            if (transaction != null) transaction.rollback();
+            logger.error("Database connection failed: {}", e.getMessage());
+            throw new RuntimeException("Ошибка соединения с БД", e);
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
@@ -149,6 +193,14 @@ public class UserDaoImpl implements UserDao {
                 logger.warn("Попытка удаления пользователя с ID={}, но запись не найдена.", id);
             }
             transaction.commit();
+        } catch (ConstraintViolationException e) {
+            if (transaction != null) transaction.rollback();
+            logger.error("Constraint violation when deleting user: {}", e.getSQLException().getMessage());
+            throw new RuntimeException("Нарушение ограничения БД при удалении", e);
+        } catch (JDBCConnectionException e) {
+            if (transaction != null) transaction.rollback();
+            logger.error("Database connection failed: {}", e.getMessage());
+            throw new RuntimeException("Ошибка соединения с БД", e);
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();

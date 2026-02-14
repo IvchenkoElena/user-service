@@ -61,15 +61,20 @@ public class ConsoleUI implements AutoCloseable {
     }
 
     private void executeChoice(int choice) {
-        switch (choice) {
-            case 1 -> createNewUser();
-            case 2 -> findUserById();
-            case 3 -> findUserByEmail();
-            case 4 -> findAllUsers();
-            case 5 -> updateUser();
-            case 6 -> deleteUser();
-            case 7 -> exitApp();
-            default -> System.out.println("Неизвестный пункт меню");
+        try {
+            switch (choice) {
+                case 1 -> createNewUser();
+                case 2 -> findUserById();
+                case 3 -> findUserByEmail();
+                case 4 -> findAllUsers();
+                case 5 -> updateUser();
+                case 6 -> deleteUser();
+                case 7 -> exitApp();
+                default -> System.out.println("Неизвестный пункт меню");
+            }
+        } catch (RuntimeException e) {
+            // Обрабатываем исключения, выброшенные из DAO
+            handleUserFriendlyError(e);
         }
     }
 
@@ -87,8 +92,8 @@ public class ConsoleUI implements AutoCloseable {
             userDao.create(user);
             System.out.println("Новый пользователь с ID = " + user.getId() + " успешно создан");
             logger.info("Новый пользователь с ID = {} успешно создан", user.getId());
-        } catch (Exception e) {
-            System.out.println("Ошибка создания пользователя");
+        } catch (RuntimeException e) {
+            handleUserFriendlyError(e);
             logger.error("Ошибка создания пользователя: {}", e.getMessage());
         }
     }
@@ -98,15 +103,20 @@ public class ConsoleUI implements AutoCloseable {
         logger.info("Начинаем поиск пользователя по ID");
         System.out.println("Введите ID:");
         Long id = Long.parseLong(scanner.nextLine());
-        Optional<User> mayBeUser = userDao.findById(id);
-        if (mayBeUser.isPresent()) {
-            User user = mayBeUser.get();
-            System.out.println("Пользователь найден: " + user);
-            logger.info("Пользователь с ID {} найден", id);
-        } else {
-            System.out.println("Пользователь с ID " + id + " не найден");
-            logger.info("Пользователь с ID {} не найден", id);
+        try {
+            Optional<User> mayBeUser = userDao.findById(id);
+            if (mayBeUser.isPresent()) {
+                User user = mayBeUser.get();
+                System.out.println("Пользователь найден: " + user);
+                logger.info("Пользователь с ID {} найден", id);
+            } else {
+                System.out.println("Пользователь с ID " + id + " не найден");
+                logger.info("Пользователь с ID {} не найден", id);
+            }
+        } catch (RuntimeException e) {
+            handleUserFriendlyError(e);
         }
+
     }
 
     private void findUserByEmail() {
@@ -114,29 +124,38 @@ public class ConsoleUI implements AutoCloseable {
         logger.info("Начинаем поиск пользователя по Email");
         System.out.println("Введите Email:");
         String email = scanner.nextLine().trim();
-        Optional<User> mayBeUser = userDao.findByEmail(email);
-        if (mayBeUser.isPresent()) {
-            User user = mayBeUser.get();
-            System.out.println("Пользователь найден: " + user);
-            logger.info("Пользователь с Email {} найден", email);
-        } else {
-            System.out.println("Пользователь с Email " + email + " не найден");
-            logger.info("Пользователь с Email {} не найден", email);
+        try {
+            Optional<User> mayBeUser = userDao.findByEmail(email);
+            if (mayBeUser.isPresent()) {
+                User user = mayBeUser.get();
+                System.out.println("Пользователь найден: " + user);
+                logger.info("Пользователь с Email {} найден", email);
+            } else {
+                System.out.println("Пользователь с Email " + email + " не найден");
+                logger.info("Пользователь с Email {} не найден", email);
+            }
+        } catch (RuntimeException e) {
+            handleUserFriendlyError(e);
         }
+
     }
 
     private void findAllUsers() {
         System.out.println("--Вывод всех пользователей--");
         logger.info("Начинаем вывод всех пользователей");
 
-        List<User> users = userDao.findAll();
-        System.out.println("Список пользователей:");
-        if (users.isEmpty()) {
-            System.out.println("пуст");
-            logger.info("Пустой список пользователей");
-        } else {
-            System.out.println(users);
-            logger.info("Список пользователей выведен");
+        try {
+            List<User> users = userDao.findAll();
+            System.out.println("Список пользователей:");
+            if (users.isEmpty()) {
+                System.out.println("пуст");
+                logger.info("Пустой список пользователей");
+            } else {
+                System.out.println(users);
+                logger.info("Список пользователей выведен");
+            }
+        } catch (RuntimeException e) {
+            handleUserFriendlyError(e);
         }
     }
 
@@ -146,42 +165,40 @@ public class ConsoleUI implements AutoCloseable {
         System.out.println("Введите ID:");
         Long id = Long.parseLong(scanner.nextLine());
 
-        Optional<User> mayBeUser = userDao.findById(id);
-        if (mayBeUser.isEmpty()) {
-            System.out.println("Пользователь с ID " + id + " не найден");
-            logger.info("Пользователь с ID {} не найден", id);
-            return;
-        }
-
-        User user = mayBeUser.get();
-        System.out.println("Текущий пользователь: " + user);
-
-        System.out.println("Введите имя. Оставьте пустым, чтобы оставить без изменений");
-        String name = scanner.nextLine().trim();
-        if(!name.isEmpty()) {
-            user.setName(name);
-        }
-
-        System.out.println("Введите email. Оставьте пустым, чтобы оставить без изменений");
-        String email = scanner.nextLine().trim();
-        if (!email.isEmpty()) {
-            user.setEmail(email);
-        }
-
-        System.out.println("Введите возраст:");
-        int age = Integer.parseInt(scanner.nextLine());
-
-        if (age != 0) {
-            user.setAge(age);
-        }
-
         try {
+            Optional<User> mayBeUser = userDao.findById(id);
+            if (mayBeUser.isEmpty()) {
+                System.out.println("Пользователь с ID " + id + " не найден");
+                logger.info("Пользователь с ID {} не найден", id);
+                return;
+            }
+
+            User user = mayBeUser.get();
+            System.out.println("Текущий пользователь: " + user);
+
+            System.out.println("Введите имя. Оставьте пустым, чтобы оставить без изменений");
+            String name = scanner.nextLine().trim();
+            if(!name.isEmpty()) {
+                user.setName(name);
+            }
+
+            System.out.println("Введите email. Оставьте пустым, чтобы оставить без изменений");
+            String email = scanner.nextLine().trim();
+            if (!email.isEmpty()) {
+                user.setEmail(email);
+            }
+
+            System.out.println("Введите возраст. Оставьте пустым, чтобы оставить без изменений");
+            String ageInput = scanner.nextLine().trim();
+            if (!ageInput.isEmpty()) {
+                user.setAge(Integer.parseInt(ageInput));
+            }
+
             userDao.update(user);
             System.out.println("Пользователь с ID = " + id + " успешно обновлен");
             logger.info("Пользователь с ID = {} успешно обновлен", id);
-        } catch (Exception e) {
-            System.out.println("Ошибка обновления пользователя");
-            logger.error("Ошибка обновления пользователя: {}", e.getMessage());
+        } catch (RuntimeException e) {
+            handleUserFriendlyError(e);
         }
     }
 
@@ -190,8 +207,12 @@ public class ConsoleUI implements AutoCloseable {
         logger.info("Начинаем удаление пользователя по ID");
         System.out.println("Введите ID:");
         Long id = Long.parseLong(scanner.nextLine());
-        userDao.delete(id);
-        logger.info("Удаление завершено");
+        try {
+            userDao.delete(id);
+            logger.info("Удаление завершено");
+        } catch (RuntimeException e) {
+            handleUserFriendlyError(e);
+        }
     }
 
     private void exitApp() {
@@ -205,5 +226,48 @@ public class ConsoleUI implements AutoCloseable {
         HibernateUtil.shutdown();
         scanner.close();
         logger.info("Консольный интерфейс ConsoleUI закрыт.");
+    }
+
+    private static void handleUserFriendlyError(RuntimeException e) {
+        Throwable cause = e.getCause();
+
+        String message;
+
+        if (cause instanceof org.hibernate.exception.ConstraintViolationException) {
+            message = "Ошибка: не удалось сохранить пользователя — нарушено ограничение БД. " +
+                    "Возможные причины: email уже существует или пропущено обязательное поле.";
+        }
+        else if (cause instanceof org.hibernate.exception.JDBCConnectionException) {
+            message = "Ошибка: потеряно соединение с базой данных. " +
+                    "Проверьте, запущен ли PostgreSQL и верны ли учётные данные.";
+        }
+        else if (cause instanceof org.hibernate.exception.SQLGrammarException) {
+            message = "Ошибка: синтаксическая ошибка SQL. " +
+                    "Возможные причины: таблица не найдена или ошибка в маппинге.";
+        }
+        else if (cause instanceof org.hibernate.StaleObjectStateException) {
+            message = "Ошибка: конфликт оптимистической блокировки. " +
+                    "Запись была изменена другой транзакцией. Обновите данные и повторите попытку.";
+        }
+        else if (e.getMessage() != null && e.getMessage().contains("нарушение ограничения БД")) {
+            message = "Ошибка: нарушено ограничение базы данных (например, уникальное поле).";
+        }
+        else if (e.getMessage() != null && e.getMessage().contains("Ошибка соединения с БД")) {
+            message = "Ошибка: не удаётся подключиться к базе данных. Проверьте сеть и статус сервера.";
+        }
+        else if (e.getMessage() != null && e.getMessage().contains("Синтаксическая ошибка SQL")) {
+            message = "Ошибка SQL: проверьте корректность запросов и структуру БД.";
+        }
+        else if (e.getMessage() != null && e.getMessage().contains("Ошибка транзакции")) {
+            message = "Ошибка: транзакция не выполнена. Попробуйте ещё раз.";
+        }
+        else {
+            // Общий случай — неизвестная ошибка
+            message = "Произошла непредвиденная ошибка: " + e.getMessage() +
+                    ". Подробности записаны в лог.";
+            logger.error("Unhandled exception in user interface", e);
+        }
+
+        System.out.println("\n!!!" + message + "!!!\n");
     }
 }
