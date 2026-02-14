@@ -1,0 +1,18 @@
+<hibernate-configuration>
+    <session-factory>
+        <!-- Подключение к БД -->
+        <property name="connection.driver_class">org.postgresql.Driver</property>
+        <property name="connection.url">jdbc:postgresql://localhost:5438/user-serviceDB</property>
+        <property name="connection.username">user</property>
+        <property name="connection.password">12345</property>
+
+        <!-- Настройки Hibernate -->
+        <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        <!-- Указываем сущность -->
+        <mapping class="aston.model.User"/>
+    </session-factory>
+</hibernate-configuration>
