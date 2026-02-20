@@ -5,7 +5,7 @@ import aston.model.User;
 import java.util.List;
 import java.util.Optional;
 
-public interface UserDao {
+public interface UserDao extends AutoCloseable {
     void create(User user);
     Optional<User> findById(Long id);
     Optional<User> findByEmail(String email);

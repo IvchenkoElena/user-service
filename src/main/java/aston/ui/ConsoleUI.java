@@ -3,6 +3,7 @@ package aston.ui;
 import aston.dao.UserDao;
 import aston.dao.UserDaoImpl;
 import aston.model.User;
+import aston.service.UserService;
 import aston.util.HibernateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,10 +15,14 @@ import java.util.Scanner;
 public class ConsoleUI implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(ConsoleUI.class);
     private final Scanner scanner = new Scanner(System.in);
+    private final UserService userService;
     private final UserDao userDao = new UserDaoImpl();
 
     private boolean running = true;
 
+    public ConsoleUI(UserService userService) {
+        this.userService = userService;
+    }
 
     public void start() throws Exception {
         logger.info("Запуск консольного интерфейса user-service");
@@ -87,11 +92,9 @@ public class ConsoleUI implements AutoCloseable {
         String email = scanner.nextLine().trim();
         System.out.println("Введите возраст:");
         int age = Integer.parseInt(scanner.nextLine());
-        User user = new User(name, email, age);
         try {
-            userDao.create(user);
+            User user = userService.createUser(name, email, age);
             System.out.println("Новый пользователь с ID = " + user.getId() + " успешно создан");
-            logger.info("Новый пользователь с ID = {} успешно создан", user.getId());
         } catch (RuntimeException e) {
             handleUserFriendlyError(e);
             logger.error("Ошибка создания пользователя: {}", e.getMessage());
@@ -104,19 +107,16 @@ public class ConsoleUI implements AutoCloseable {
         System.out.println("Введите ID:");
         Long id = Long.parseLong(scanner.nextLine());
         try {
-            Optional<User> mayBeUser = userDao.findById(id);
+            Optional<User> mayBeUser = userService.findUserById(id);
             if (mayBeUser.isPresent()) {
                 User user = mayBeUser.get();
                 System.out.println("Пользователь найден: " + user);
-                logger.info("Пользователь с ID {} найден", id);
             } else {
                 System.out.println("Пользователь с ID " + id + " не найден");
-                logger.info("Пользователь с ID {} не найден", id);
             }
         } catch (RuntimeException e) {
             handleUserFriendlyError(e);
         }
-
     }
 
     private void findUserByEmail() {
@@ -125,14 +125,12 @@ public class ConsoleUI implements AutoCloseable {
         System.out.println("Введите Email:");
         String email = scanner.nextLine().trim();
         try {
-            Optional<User> mayBeUser = userDao.findByEmail(email);
+            Optional<User> mayBeUser = userService.findUserByEmail(email);
             if (mayBeUser.isPresent()) {
                 User user = mayBeUser.get();
                 System.out.println("Пользователь найден: " + user);
-                logger.info("Пользователь с Email {} найден", email);
             } else {
                 System.out.println("Пользователь с Email " + email + " не найден");
-                logger.info("Пользователь с Email {} не найден", email);
             }
         } catch (RuntimeException e) {
             handleUserFriendlyError(e);
@@ -145,7 +143,7 @@ public class ConsoleUI implements AutoCloseable {
         logger.info("Начинаем вывод всех пользователей");
 
         try {
-            List<User> users = userDao.findAll();
+            List<User> users = userService.findAllUsers();
             System.out.println("Список пользователей:");
             if (users.isEmpty()) {
                 System.out.println("пуст");
@@ -166,37 +164,17 @@ public class ConsoleUI implements AutoCloseable {
         Long id = Long.parseLong(scanner.nextLine());
 
         try {
-            Optional<User> mayBeUser = userDao.findById(id);
-            if (mayBeUser.isEmpty()) {
-                System.out.println("Пользователь с ID " + id + " не найден");
-                logger.info("Пользователь с ID {} не найден", id);
-                return;
-            }
-
-            User user = mayBeUser.get();
-            System.out.println("Текущий пользователь: " + user);
-
             System.out.println("Введите имя. Оставьте пустым, чтобы оставить без изменений");
             String name = scanner.nextLine().trim();
-            if(!name.isEmpty()) {
-                user.setName(name);
-            }
 
             System.out.println("Введите email. Оставьте пустым, чтобы оставить без изменений");
             String email = scanner.nextLine().trim();
-            if (!email.isEmpty()) {
-                user.setEmail(email);
-            }
 
             System.out.println("Введите возраст. Оставьте пустым, чтобы оставить без изменений");
             String ageInput = scanner.nextLine().trim();
-            if (!ageInput.isEmpty()) {
-                user.setAge(Integer.parseInt(ageInput));
-            }
 
-            userDao.update(user);
+            userService.updateUser(id, name, email, ageInput);
             System.out.println("Пользователь с ID = " + id + " успешно обновлен");
-            logger.info("Пользователь с ID = {} успешно обновлен", id);
         } catch (RuntimeException e) {
             handleUserFriendlyError(e);
         }
@@ -208,8 +186,8 @@ public class ConsoleUI implements AutoCloseable {
         System.out.println("Введите ID:");
         Long id = Long.parseLong(scanner.nextLine());
         try {
-            userDao.delete(id);
-            logger.info("Удаление завершено");
+            userService.deleteUser(id);
+            System.out.println("Удаление завершено");
         } catch (RuntimeException e) {
             handleUserFriendlyError(e);
         }

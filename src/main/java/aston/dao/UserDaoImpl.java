@@ -213,4 +213,9 @@ public class UserDaoImpl implements UserDao {
             }
         }
     }
+
+    @Override
+    public void close() throws Exception {
+        logger.info("UserDao закрыт");
+    }
 }
