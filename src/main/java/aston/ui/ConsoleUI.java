@@ -1,7 +1,5 @@
 package aston.ui;
 
-import aston.dao.UserDao;
-import aston.dao.UserDaoImpl;
 import aston.model.User;
 import aston.service.UserService;
 import aston.util.HibernateUtil;
@@ -16,7 +14,6 @@ public class ConsoleUI implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(ConsoleUI.class);
     private final Scanner scanner = new Scanner(System.in);
     private final UserService userService;
-    private final UserDao userDao = new UserDaoImpl();
 
     private boolean running = true;
 
