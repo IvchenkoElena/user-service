@@ -1,4 +1,4 @@
-package aston.DAO;
+package aston.dao;
 
 import aston.model.User;
 

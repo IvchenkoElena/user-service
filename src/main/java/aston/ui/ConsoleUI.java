@@ -1,7 +1,7 @@
-package aston.UI;
+package aston.ui;
 
-import aston.DAO.UserDao;
-import aston.DAO.UserDaoImpl;
+import aston.dao.UserDao;
+import aston.dao.UserDaoImpl;
 import aston.model.User;
 import aston.util.HibernateUtil;
 import org.slf4j.Logger;
