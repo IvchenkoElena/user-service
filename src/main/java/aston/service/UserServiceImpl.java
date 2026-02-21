@@ -24,11 +24,32 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User createUser(String name, String email, int age) {
+        // Валидация аргументов
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Имя не может быть пустым");
+        }
+        if (name.length() < 2 || name.length() > 100) {
+            throw new IllegalArgumentException("Имя должно быть от 2 до 100 символов");
+        }
+        if (!isValidEmail(email)) {
+            throw new IllegalArgumentException("Некорректный email");
+        }
+        if (age < 3 || age > 120) {
+            throw new IllegalArgumentException("Возраст должен быть от 3 до 120 лет");
+        }
+        if (userDao.findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException("Пользователь с таким email уже существует");
+        }
+
         logger.info("Создание пользователя: name={}, email={}", name, email);
         User user = new User(name, email, age);
         userDao.create(user);
         logger.info("Новый пользователь с ID = {} успешно создан", user.getId());
         return user;
+    }
+
+    private boolean isValidEmail(String email) {
+        return email != null && email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
     }
 
     @Override
@@ -72,7 +93,7 @@ public class UserServiceImpl implements UserService {
         }
 
         User user = mayBeUser.get();
-        System.out.println("Текущий пользователь: " + user);
+        System.out.println("Старые данные пользователя: " + user);
 
         if(!name.isEmpty()) {
             user.setName(name);
@@ -87,6 +108,7 @@ public class UserServiceImpl implements UserService {
         }
 
         userDao.update(user);
+        System.out.println("Новые данные пользователя: " + user);
         logger.info("Пользователь с ID = {} успешно обновлен", id);
     }
 
