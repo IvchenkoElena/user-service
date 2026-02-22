@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 @Entity
@@ -31,7 +32,7 @@ public class User {
         this.name = name;
         this.email = email;
         this.age = age;
-        this.createdAt = LocalDateTime.now();}
+        this.createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);}
 
     public Long getId() {
         return id;
