@@ -1,4 +1,4 @@
-package aston.DAO;
+package aston.dao;
 
 import aston.model.User;
 import aston.util.HibernateUtil;
@@ -18,10 +18,21 @@ import java.util.Optional;
 
 public class UserDaoImpl implements UserDao {
     private static final Logger logger = LoggerFactory.getLogger(UserDaoImpl.class);
+    private final SessionFactory sessionFactory;
+
+    // Конструктор по умолчаию для использования боевой SessionFactory
+    public UserDaoImpl() {
+        this.sessionFactory = HibernateUtil.getSessionFactory();
+    }
+
+    // Конструктор для тестов принимает тестовую SessionFactory
+    public UserDaoImpl(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
+    }
 
     @Override
     public void create(User user) {
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = sessionFactory.openSession();
         Transaction transaction = null;
 
         try {
@@ -59,7 +70,7 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public Optional<User> findById(Long id) {
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = sessionFactory.openSession();
         User user = null;
 
         try {
@@ -89,7 +100,7 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public Optional<User> findByEmail(String email) {
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = sessionFactory.openSession();
         User user = null;
 
         try {
@@ -122,7 +133,7 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public List<User> findAll() {
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = sessionFactory.openSession();
         List<User> users;
 
         try {
@@ -144,7 +155,7 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public void update(User user) {
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = sessionFactory.openSession();
         Transaction transaction = null;
 
         try {
@@ -180,7 +191,7 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public void delete(Long id) {
-        Session session = HibernateUtil.getSessionFactory().openSession();
+        Session session = sessionFactory.openSession();
         Transaction transaction = null;
 
         try {
@@ -212,5 +223,10 @@ public class UserDaoImpl implements UserDao {
                 session.close();
             }
         }
+    }
+
+    @Override
+    public void close() throws Exception {
+        logger.info("UserDao закрыт");
     }
 }

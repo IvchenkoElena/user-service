@@ -1,6 +1,10 @@
 package aston;
 
-import aston.UI.ConsoleUI;
+import aston.dao.UserDao;
+import aston.dao.UserDaoImpl;
+import aston.service.UserService;
+import aston.service.UserServiceImpl;
+import aston.ui.ConsoleUI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,7 +14,9 @@ public class UserServiceApp {
     public static void main(String[] args) {
         logger.info("Запуск приложения");
 
-        try (ConsoleUI consoleUI = new ConsoleUI()) {
+        try (UserDao userDao = new UserDaoImpl();
+             UserService userService = new UserServiceImpl(userDao);
+             ConsoleUI consoleUI = new ConsoleUI(userService)) {
             logger.info("Приложение стартовало");
             consoleUI.start();
         } catch (Exception e) {
