@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 @Data
-public class UserRequestDto {
+public class CreateUserRequestDto {
     @NotBlank(message = "Name is required")
     private String name;
 
