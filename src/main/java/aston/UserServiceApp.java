@@ -1,30 +1,35 @@
 package aston;
 
-import aston.dao.UserDao;
-import aston.dao.UserDaoImpl;
-import aston.service.UserService;
-import aston.service.UserServiceImpl;
 import aston.ui.ConsoleUI;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-public class UserServiceApp {
-    private final static Logger logger = LoggerFactory.getLogger(UserServiceApp.class);
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+@Slf4j
+@AllArgsConstructor
+public class UserServiceApp implements CommandLineRunner {
+    private final ConsoleUI consoleUI;
 
     public static void main(String[] args) {
-        logger.info("Запуск приложения");
+        SpringApplication.run(UserServiceApp.class,args);
+    }
 
-        try (UserDao userDao = new UserDaoImpl();
-             UserService userService = new UserServiceImpl(userDao);
-             ConsoleUI consoleUI = new ConsoleUI(userService)) {
-            logger.info("Приложение стартовало");
+    @Override
+    public void run(String... args) throws Exception {
+        log.info("Запуск приложения");
+        try {
+            log.info("Приложение стартовало");
             consoleUI.start();
         } catch (Exception e) {
-            logger.error("Неожиданная ошибка в главном потоке приложения: {}", e.getMessage(), e);
+            log.error("Неожиданная ошибка в главном потоке приложения: {}", e.getMessage(), e);
             System.err.println("Произошла критическая ошибка. Приложение завершает работу.");
-            System.exit(1);
+            throw e;
+        } finally {
+            log.info("Приложение user-service завершено.");
         }
-
-        logger.info("Приложение user-service завершено.");
     }
 }

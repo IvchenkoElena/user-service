@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -18,23 +19,24 @@ import java.time.temporal.ChronoUnit;
 @Table(name = "users")
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode
 @ToString
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "username")
+    @Column(name = "username", nullable = false, length = 100)
     private String name;
     @Column(nullable = false, unique = true)
     private String email;
     private int age;
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt= LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
 
-    public User(String name, String email, Integer age) {
+    public User(String name, String email, int age) {
         this.name = name;
         this.email = email;
         this.age = age;
-        this.createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);}
+    }
 }
