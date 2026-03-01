@@ -4,29 +4,22 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>aston</groupId>
-    <artifactId>user-service</artifactId>
-    <version>1.0-SNAPSHOT</version>
-
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.0</version>
-        <relativePath/>
+        <groupId>aston</groupId>
+        <artifactId>user-management-project</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
     </parent>
 
-    <properties>
-        <java.version>21</java.version>
-        <lombok.version>1.18.34</lombok.version>
-        <mapstruct.version>1.6.2</mapstruct.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>${java.version}</maven.compiler.source>
-        <maven.compiler.target>${java.version}</maven.compiler.target>
-        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
-
-    </properties>
+    <artifactId>user-service</artifactId>
+    <name>User Service Backend</name>
 
     <dependencies>
+        <!-- Зависимость на модель -->
+        <dependency>
+            <groupId>aston</groupId>
+            <artifactId>user-model</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -59,14 +52,13 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
             <scope>provided</scope>
         </dependency>
 
+        <!-- MapStruct -->
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-            <version>${mapstruct.version}</version>
         </dependency>
     </dependencies>
 

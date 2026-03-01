@@ -8,7 +8,6 @@ import aston.exception.UserNotFoundException;
 import aston.mapper.UserMapper;
 import aston.model.User;
 import aston.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,7 +57,7 @@ public class UserServiceImpl implements UserService {
             return userMapper.toDTO(mayBeUser.get());
         } else {
             log.info("Пользователь с ID {} не найден", id);
-            throw new EntityNotFoundException("Пользователь не найден");
+            throw new UserNotFoundException("Пользователь не найден");
         }
     }
 
@@ -72,7 +71,7 @@ public class UserServiceImpl implements UserService {
             return userMapper.toDTO(mayBeUser.get());
         } else {
             log.info("Пользователь с Email {} не найден", email);
-            throw new EntityNotFoundException("Пользователь не найден");
+            throw new UserNotFoundException("Пользователь не найден");
         }
     }
 
