@@ -1,126 +1,131 @@
 package aston.service;
 
-import aston.dao.UserDao;
+import aston.dto.CreateUserRequestDto;
+import aston.dto.UpdateUserRequestDto;
+
+import aston.dto.UserResponseDto;
+import aston.exception.UserNotFoundException;
+import aston.mapper.UserMapper;
 import aston.model.User;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import aston.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
-
+@Slf4j
+@Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
-    private final UserDao userDao;
+    private final UserRepository repository;
 
-    public UserServiceImpl(UserDao userDao) {
-        this.userDao = userDao;
-    }
+    @Autowired
+    private final UserMapper userMapper;
 
     @Override
     public void close() throws Exception {
-        logger.info("UserService закрыт");
+        log.info("UserService закрыт");
     }
 
     @Override
-    public User createUser(String name, String email, int age) {
-        // Валидация аргументов
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Имя не может быть пустым");
+    @Transactional
+    public UserResponseDto createUser(CreateUserRequestDto requestDto) {
+        validateRequestData(requestDto);
+        validateUniqueEmail(requestDto.getEmail());
+        log.info("Создание пользователя: name={}, email={}", requestDto.getName(), requestDto.getEmail());
+        User user = userMapper.toEntity(requestDto);
+        User savedUser = repository.save(user);
+        log.info("Новый пользователь с ID = {} успешно создан", savedUser.getId());
+        return userMapper.toDTO(savedUser);
+    }
+
+    private void validateRequestData(CreateUserRequestDto requestDto) {
+        if (requestDto.getName() == null || requestDto.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be empty or null");
         }
-        if (name.length() < 2 || name.length() > 100) {
-            throw new IllegalArgumentException("Имя должно быть от 2 до 100 символов");
+        if (requestDto.getEmail() == null || !requestDto.getEmail().contains("@")) {
+            throw new IllegalArgumentException("Invalid email format");
         }
-        if (!isValidEmail(email)) {
-            throw new IllegalArgumentException("Некорректный email");
+        if (requestDto.getAge() < 0 || requestDto.getAge() > 120) {
+            throw new IllegalArgumentException("Age must be between 0 and 120");
         }
-        if (age < 3 || age > 120) {
-            throw new IllegalArgumentException("Возраст должен быть от 3 до 120 лет");
-        }
-        if (userDao.findByEmail(email).isPresent()) {
+    }
+
+    private void validateUniqueEmail(String email) {
+        if (repository.findByEmail(email).isPresent()) {
+            log.warn("Попытка создать пользователя с существующим email: {}", email);
             throw new IllegalArgumentException("Пользователь с таким email уже существует");
         }
-
-        logger.info("Создание пользователя: name={}, email={}", name, email);
-        User user = new User(name, email, age);
-        userDao.create(user);
-        logger.info("Новый пользователь с ID = {} успешно создан", user.getId());
-        return user;
-    }
-
-    private boolean isValidEmail(String email) {
-        return email != null && email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
     }
 
     @Override
-    public Optional<User> findUserById(Long id) {
-        logger.info("Поиск пользователя по Id={}", id);
-        Optional<User> mayBeUser = userDao.findById(id);
+    @Transactional(readOnly = true)
+    public UserResponseDto findUserById(Long id) {
+        log.info("Поиск пользователя по Id={}", id);
+        Optional<User> mayBeUser = repository.findById(id);
         if (mayBeUser.isPresent()) {
-            logger.info("Пользователь с ID {} найден", id);
+            log.info("Пользователь с ID {} найден", id);
+            return userMapper.toDTO(mayBeUser.get());
         } else {
-            logger.info("Пользователь с ID {} не найден", id);
+            log.info("Пользователь с ID {} не найден", id);
+            throw new UserNotFoundException("Пользователь не найден");
         }
-        return mayBeUser;
     }
 
     @Override
-    public Optional<User> findUserByEmail(String email) {
-        logger.info("Поиск пользователя по Email={}", email);
-        Optional<User> mayBeUser = userDao.findByEmail(email);
+    @Transactional(readOnly = true)
+    public UserResponseDto findUserByEmail(String email) {
+        log.info("Поиск пользователя по Email={}", email);
+        Optional<User> mayBeUser = repository.findByEmail(email);
         if (mayBeUser.isPresent()) {
-            logger.info("Пользователь с Email {} найден", email);
+            log.info("Пользователь с Email {} найден", email);
+            return userMapper.toDTO(mayBeUser.get());
         } else {
-            logger.info("Пользователь с Email {} не найден", email);
+            log.info("Пользователь с Email {} не найден", email);
+            throw new UserNotFoundException("Пользователь не найден");
         }
-        return mayBeUser;
     }
 
     @Override
-    public List<User> findAllUsers() {
-        List<User> users = userDao.findAll();
-        logger.info("Найдено {} пользователей", users.size());
-        return users;
+    @Transactional(readOnly = true)
+    public List<UserResponseDto> findAllUsers() {
+        List<User> users = repository.findAll();
+        log.info("Найдено {} пользователей", users.size());
+        return users.stream()
+                .map(userMapper::toDTO)
+                .toList();
     }
 
     @Override
-    public void updateUser(Long id, String name, String email, String ageInput) {
-        Optional<User> mayBeUser = userDao.findById(id);
+    @Transactional
+    public UserResponseDto updateUser(Long id, UpdateUserRequestDto requestDto) {
+        Optional<User> mayBeUser = repository.findById(id);
         if (mayBeUser.isEmpty()) {
-            System.out.println("Пользователь с ID " + id + " не найден");
-            logger.info("Пользователь с ID {} не найден", id);
-            return;
+            log.warn("Пользователь с ID {} не найден", id);
+            throw new UserNotFoundException("Пользователь с ID " + id + " не найден");
         }
-
         User user = mayBeUser.get();
-        System.out.println("Старые данные пользователя: " + user);
-
-        if(!name.isEmpty()) {
-            user.setName(name);
-        }
-
-        if (!email.isEmpty()) {
-            user.setEmail(email);
-        }
-
-        if (!ageInput.isEmpty()) {
-            user.setAge(Integer.parseInt(ageInput));
-        }
-
-        userDao.update(user);
-        System.out.println("Новые данные пользователя: " + user);
-        logger.info("Пользователь с ID = {} успешно обновлен", id);
+        log.info("Старые данные пользователя: " + user);
+        userMapper.updateEntityFromRequest(requestDto, user);
+        User updatedUser = repository.save(user);
+        System.out.println("Новые данные пользователя: " + updatedUser);
+        log.info("Пользователь с ID = {} успешно обновлен", id);
+        return userMapper.toDTO(updatedUser);
     }
 
     @Override
     public void deleteUser(Long id) {
-        Optional<User> mayBeUser = userDao.findById(id);
+        Optional<User> mayBeUser = repository.findById(id);
         if (mayBeUser.isEmpty()) {
-            System.out.println("Пользователь с ID " + id + " не найден");
-            logger.info("Пользователь с ID {} не найден", id);
-            return;
+            log.info("Пользователь с ID {} не найден", id);
+            throw new UserNotFoundException("Пользователь с ID " + id + " не найден");
         }
-        userDao.delete(id);
-        logger.info("Пользователь с ID {} удалён", id);
+        repository.deleteById(id);
+        log.info("Пользователь с ID {} удалён", id);
     }
 }

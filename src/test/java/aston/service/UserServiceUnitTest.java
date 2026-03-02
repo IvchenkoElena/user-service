@@ -1,7 +1,12 @@
 package aston.service;
 
-import aston.dao.UserDao;
+import aston.dto.CreateUserRequestDto;
+import aston.dto.UpdateUserRequestDto;
+import aston.dto.UserResponseDto;
+import aston.exception.UserNotFoundException;
+import aston.mapper.UserMapper;
 import aston.model.User;
+import aston.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,17 +15,21 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.atMost;
+
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -29,7 +38,9 @@ import static org.mockito.Mockito.when;
 
 class UserServiceUnitTest {
     @Mock
-    private UserDao userDao;
+    private UserRepository userRepository;
+    @Mock
+    private UserMapper userMapper;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -38,28 +49,46 @@ class UserServiceUnitTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        testUser = new User("Yuriy Gagarin", "gagarin@mail.ru", 35);
+        testUser = new User();
+        testUser.setName("Yuriy Gagarin");
+        testUser.setEmail("gagarin@mail.ru");
+        testUser.setAge(35);
         testUser.setId(1L);
     }
 
     @Test
     @DisplayName("Создание пользователя - успешный сценарий")
     void shouldCreateUserSuccessfully() {
-        // Arrange
-        doNothing().when(userDao).create(any(User.class));
+        when(userMapper.toEntity(any(CreateUserRequestDto.class))).thenReturn(testUser);
 
-        // Act
-        User result = userService.createUser("Yuriy Gagarin", "gagarin@mail.ru", 35);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId(1L);
+            return user;
+        });
 
-        // Assert
+        UserResponseDto expectedResponse = new UserResponseDto();
+        expectedResponse.setId(1L);
+        expectedResponse.setName("Yuriy Gagarin");
+        expectedResponse.setEmail("gagarin@mail.ru");
+        expectedResponse.setAge(35);
+
+        when(userMapper.toDTO(any(User.class))).thenReturn(expectedResponse);
+
+        CreateUserRequestDto requestDto = new CreateUserRequestDto("Yuriy Gagarin", "gagarin@mail.ru", 35);
+        UserResponseDto result = userService.createUser(requestDto);
+
         assertNotNull(result);
+        assertEquals(1L, result.getId());
         assertEquals("Yuriy Gagarin", result.getName());
         assertEquals("gagarin@mail.ru", result.getEmail());
         assertEquals(35, result.getAge());
-        verify(userDao, times(1)).create(argThat(user ->
-                "Yuriy Gagarin".equals(user.getName()) &&
-                "gagarin@mail.ru".equals(user.getEmail()) &&
-                35 == user.getAge()));
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository, times(1)).save(userCaptor.capture());
+        User capturedUser = userCaptor.getValue();
+        assertEquals("Yuriy Gagarin", capturedUser.getName());
+        assertEquals("gagarin@mail.ru", capturedUser.getEmail());
+        assertEquals(35, capturedUser.getAge());
     }
 
     @ParameterizedTest
@@ -70,189 +99,282 @@ class UserServiceUnitTest {
             "Strelka, strelka@mail.ru, 4"
     })
     void shouldCreateUsersWithValidData(String name, String email, int age){
-        // Arrange
-        doNothing().when(userDao).create(any(User.class));
+        User testUserForCase = new User();
+        testUserForCase.setName(name);
+        testUserForCase.setEmail(email);
+        testUserForCase.setAge(age);
+        testUserForCase.setId(1L);
 
-        // Act
-        User result = userService.createUser(name, email, age);
+        when(userMapper.toEntity(any(CreateUserRequestDto.class)))
+                .thenReturn(testUserForCase);
 
-        // Assert
+
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId(1L);
+            return user;
+        });
+
+        UserResponseDto expectedResponse = new UserResponseDto();
+        expectedResponse.setId(1L);
+        expectedResponse.setName(name);
+        expectedResponse.setEmail(email);
+        expectedResponse.setAge(age);
+
+        when(userMapper.toDTO(any(User.class))).thenReturn(expectedResponse);
+
+        CreateUserRequestDto requestDto = new CreateUserRequestDto(name, email, age);
+        UserResponseDto result = userService.createUser(requestDto);
+
         assertNotNull(result);
         assertEquals(name, result.getName());
         assertEquals(email, result.getEmail());
         assertEquals(age, result.getAge());
-        verify(userDao, times(1)).create(argThat(user ->
-                name.equals(user.getName()) &&
-                        email.equals(user.getEmail()) &&
-                        age == user.getAge()));
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository, times(1)).save(userCaptor.capture());
+        User capturedUser = userCaptor.getValue();
+        assertEquals(name, capturedUser.getName());
+        assertEquals(email, capturedUser.getEmail());
+        assertEquals(age, capturedUser.getAge());
     }
 
     @Test
     @DisplayName("Поиск пользователя по ID - пользователь существует")
     void shouldFindUserByIdWhenExist() {
-        // Arrange
-        when(userDao.findById(1L)).thenReturn(Optional.of(testUser));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
 
-        // Act
-        Optional<User> result = userService.findUserById(1L);
+        UserResponseDto expectedResponse = new UserResponseDto();
+        expectedResponse.setId(1L);
+        expectedResponse.setName("Yuriy Gagarin");
+        expectedResponse.setEmail("gagarin@mail.ru");
+        expectedResponse.setAge(35);
+        expectedResponse.setCreatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
 
-        // Assert
-        assertTrue(result.isPresent());
-        assertEquals(testUser, result.get());
+        when(userMapper.toDTO(testUser)).thenReturn(expectedResponse);
+
+        UserResponseDto result = userService.findUserById(1L);
+
+        assertNotNull(result);
+        assertEquals(testUser.getId(), result.getId());
+        assertEquals(testUser.getName(), result.getName());
+        assertEquals(testUser.getEmail(), result.getEmail());
+        assertEquals(testUser.getAge(), result.getAge());
+        assertEquals(testUser.getCreatedAt(), result.getCreatedAt());
     }
 
     @Test
     @DisplayName("Поиск пользователя по ID - пользователь не существует")
     void shouldFindUserByIdWhenNotExist() {
-        // Arrange
-        when(userDao.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // Act
-        Optional<User> result = userService.findUserById(999L);
-
-        // Assert
-        assertFalse(result.isPresent());
+        assertThrows(UserNotFoundException.class,
+                () -> userService.findUserById(999L));
     }
 
     @ParameterizedTest
     @ValueSource(longs = {1L, 2L, 3L, 4L})
     @DisplayName("Параметризованный поиск пользователей по ID")
     void shouldFindUsersById(Long id) {
-        // Arrange
-        User user = new User("Test user " + id, "testmail" + id + "@mail.ru", (int) (id + 20));
+        User user = new User();
+        user.setName("Test user " + id);
+        user.setEmail("testmail" + id + "@mail.ru");
+        user.setAge((int) (id + 20));
         user.setId(id);
-        when(userDao.findById(id)).thenReturn(Optional.of(user));
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
 
-        // Act
-        Optional<User> result = userService.findUserById(id);
+        UserResponseDto expectedResponse = new UserResponseDto();
+        expectedResponse.setId(id);
+        expectedResponse.setName(user.getName());
+        expectedResponse.setEmail(user.getEmail());
+        expectedResponse.setAge(user.getAge());
 
-        // Assert
-        assertTrue(result.isPresent());
-        assertEquals(user, result.get());
-        assertEquals(id, result.get().getId());
+        when(userMapper.toDTO(user)).thenReturn(expectedResponse);
+
+        UserResponseDto result = userService.findUserById(id);
+
+        assertNotNull(result);
+        assertEquals(id, result.getId());
+        assertEquals(user.getId(), result.getId());
+        assertEquals(user.getName(), result.getName());
+        assertEquals(user.getEmail(), result.getEmail());
+        assertEquals(user.getAge(), result.getAge());
     }
 
     @Test
     @DisplayName("Поиск пользователя по ID - пользователь существует")
     void shouldFindUserByEmailWhenExist() {
-        // Arrange
-        when(userDao.findByEmail("gagarin@mail.ru")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmail("gagarin@mail.ru")).thenReturn(Optional.of(testUser));
 
-        // Act
-        Optional<User> result = userService.findUserByEmail("gagarin@mail.ru");
+        UserResponseDto expectedResponse = new UserResponseDto();
+        expectedResponse.setId(1L);
+        expectedResponse.setName("Yuriy Gagarin");
+        expectedResponse.setEmail("gagarin@mail.ru");
+        expectedResponse.setAge(35);
 
-        // Assert
-        assertTrue(result.isPresent());
-        assertEquals(testUser, result.get());
+        when(userMapper.toDTO(testUser)).thenReturn(expectedResponse);
+
+        UserResponseDto result = userService.findUserByEmail("gagarin@mail.ru");
+
+        assertNotNull(result);
+        assertEquals(testUser.getId(), result.getId());
+        assertEquals(testUser.getName(), result.getName());
+        assertEquals(testUser.getEmail(), result.getEmail());
+        assertEquals(testUser.getAge(), result.getAge());
     }
 
     @Test
     @DisplayName("Поиск пользователя по ID - пользователь не существует")
     void shouldFindUserByEmailWhenNotExist() {
-        // Arrange
-        when(userDao.findByEmail("test@mail.ru")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("test@mail.ru")).thenReturn(Optional.empty());
 
-        // Act
-        Optional<User> result = userService.findUserByEmail("test@mail.ru");
-
-        // Assert
-        assertFalse(result.isPresent());
+        assertThrows(UserNotFoundException.class,
+                () -> userService.findUserByEmail("test@mail.ru"));
     }
 
     @Test
     @DisplayName("Получение всех пользователей")
     void shouldFindAllUsers() {
-        // Arrange
-        when(userDao.findAll()).thenReturn(List.of(testUser));
+        List<User> users = List.of(testUser);
 
-        // Act
-        List<User> result = userService.findAllUsers();
+        when(userRepository.findAll()).thenReturn(users);
 
-        // Assert
+        UserResponseDto expectedResponse = new UserResponseDto();
+        expectedResponse.setId(1L);
+        expectedResponse.setName("Yuriy Gagarin");
+        expectedResponse.setEmail("gagarin@mail.ru");
+        expectedResponse.setAge(35);
+        expectedResponse.setCreatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+
+        when(userMapper.toDTO(testUser)).thenReturn(expectedResponse);
+
+        List<UserResponseDto> result = userService.findAllUsers();
+
         assertEquals(1, result.size());
-        assertEquals(testUser, result.getFirst());
+        assertEquals(testUser.getId(), result.getFirst().getId());
+        assertEquals(testUser.getName(), result.getFirst().getName());
+        assertEquals(testUser.getEmail(), result.getFirst().getEmail());
+        assertEquals(testUser.getAge(), result.getFirst().getAge());
     }
 
     @Test
     @DisplayName("Обновление пользователя - успешный сценарий")
     void shouldUpdateUserWhenExist() {
-        // Arrange
-        when(userDao.findById(1L)).thenReturn(Optional.of(testUser));
-        doNothing().when(userDao).update(any(User.class));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
 
-        // Act
-        userService.updateUser(1L, "New name", "", "50");
+        User updatedUserExpected  = new User();
+        updatedUserExpected .setId(1L);
+        updatedUserExpected .setName("New name");
+        updatedUserExpected .setEmail("gagarin@mail.ru");
+        updatedUserExpected .setAge(50);
+        updatedUserExpected.setCreatedAt(testUser.getCreatedAt());
 
-        // Assert
-        verify(userDao, times(1)).update(argThat(user ->
-                user.getId().equals(1L) &&
-                user.getName().equals("New name") &&
-                user.getEmail().equals("gagarin@mail.ru") &&
-                user.getAge() == 50));
+        doAnswer(invocation -> {
+            UpdateUserRequestDto dto = invocation.getArgument(0);
+            User user = invocation.getArgument(1);
+
+            if (dto.getName() != null) user.setName(dto.getName());
+            if (dto.getEmail() != null) user.setEmail(dto.getEmail());
+            if (dto.getAge() != null) user.setAge(dto.getAge());
+
+            return null;
+        }).when(userMapper).updateEntityFromRequest(any(UpdateUserRequestDto.class), eq(testUser));
+
+        when(userRepository.save(any(User.class))).thenReturn(updatedUserExpected );
+
+        UserResponseDto expectedResponse = new UserResponseDto();
+        expectedResponse.setId(1L);
+        expectedResponse.setName("New name");
+        expectedResponse.setEmail("gagarin@mail.ru");
+        expectedResponse.setAge(50);
+        expectedResponse.setCreatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+
+        when(userMapper.toDTO(testUser)).thenReturn(expectedResponse);
+
+        UpdateUserRequestDto requestDto = new UpdateUserRequestDto("New name", null, 50);
+        userService.updateUser(1L, requestDto);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository, times(1)).save(userCaptor.capture());
+        User updatedUser = userCaptor.getValue();
+        assertEquals(1L, updatedUser.getId());
+        assertEquals("New name", updatedUser.getName());
+        assertEquals("gagarin@mail.ru", updatedUser.getEmail());
+        assertEquals(50, updatedUser.getAge());
     }
 
     @Test
     @DisplayName("Обновление несуществующего пользователя")
     void shouldThrowExceptionWhenUpdatingNotExistingUser() {
-        // Arrange
-        when(userDao.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // Act
-        userService.updateUser(999L, "New name", "", "50");
+        UpdateUserRequestDto requestDto = new UpdateUserRequestDto("New name", null, 50);
+        assertThrows(UserNotFoundException.class,
+                () -> userService.updateUser(999L, requestDto));
 
-        // Assert
-        verify(userDao, never()).update(any(User.class));
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
     @DisplayName("Удаление существующего пользователя")
     void shouldDeleteUserWhenExist() {
-        // Arrange
-        when(userDao.findById(1L)).thenReturn(Optional.of(testUser));
-        doNothing().when(userDao).delete(any(Long.class));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        doNothing().when(userRepository).deleteById(1L);
 
-        // Act
         userService.deleteUser(1L);
 
-        // Assert
-        verify(userDao, times(1)).delete(1L);
+        verify(userRepository, times(1)).deleteById(1L);
     }
 
     @Test
     @DisplayName("Удаление несуществующего пользователя")
     void shouldThrowExceptionWhenDeletingNotExistingUser() {
-        // Arrange
-        when(userDao.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // Act
-        userService.deleteUser(999L);
+        assertThrows(UserNotFoundException.class,
+                () -> userService.deleteUser(999L));
 
-        // Assert
-        verify(userDao, never()).delete(999L);
+        verify(userRepository, never()).deleteById(999L);
     }
 
     @Test
     @DisplayName("Метод close() — успешное закрытие")
     void shouldCloseSuccessfully() throws Exception {
-        // Act & Assert
         assertDoesNotThrow(() -> userService.close());
-        verify(userDao, atMost(1)).close();
     }
 
     @ParameterizedTest
     @MethodSource("provideInvalidUserData")
     @DisplayName("Параметризованный тест обработки некорректных данных при создании")
-    void shouldHandleInvalidDataOnCreate(String name, String email, int age, Class<Exception> expectedException) {
-        // Act & Assert
-        assertThrows(expectedException,
-                () -> userService.createUser(name, email, age));
+    void shouldHandleInvalidDataOnCreate(String name, String email, Integer age,
+                                         Class<? extends Exception> expectedException, String errorMessageContains) {
+        CreateUserRequestDto requestDto = new CreateUserRequestDto(name, email, age);
+
+        Throwable thrown = assertThrows(expectedException,
+                () -> userService.createUser(requestDto),
+                "Ожидалось исключение типа " + expectedException.getSimpleName()
+        );
+
+        if (errorMessageContains != null) {
+            assertTrue(thrown.getMessage().contains(errorMessageContains),
+                    "Сообщение об ошибке должно содержать '" + errorMessageContains + "', но было: " + thrown.getMessage());
+        }
     }
 
     static List<Arguments> provideInvalidUserData() {
         return List.of(
-                Arguments.of("", "valid@example.com", 25, IllegalArgumentException.class),
-                Arguments.of("Valid Name", "invalid-email", 25, IllegalArgumentException.class),
-                Arguments.of("Valid Name", "valid@example.com", -5, IllegalArgumentException.class)
+                Arguments.of("", "valid@example.com", 25,
+                        IllegalArgumentException.class, "Name cannot be empty or null"),
+                Arguments.of(null, "valid@example.com", 25,
+                        IllegalArgumentException.class, "Name cannot be empty or null"),
+                Arguments.of("Valid Name", "invalid-email", 25,
+                        IllegalArgumentException.class, "Invalid email format"),
+                Arguments.of("Valid Name", null, 25,
+                        IllegalArgumentException.class, "Invalid email format"),
+                Arguments.of("Valid Name", "valid@example.com", -5,
+                        IllegalArgumentException.class, "Age must be between 0 and 120"),
+                Arguments.of("Valid Name", "valid@example.com", 150,
+                        IllegalArgumentException.class, "Age must be between 0 and 120")
         );
     }
 }

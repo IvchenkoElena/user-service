@@ -1,16 +1,17 @@
 package aston.service;
 
-import aston.model.User;
+import aston.dto.CreateUserRequestDto;
+import aston.dto.UpdateUserRequestDto;
+import aston.dto.UserResponseDto;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface UserService extends AutoCloseable {
-    User createUser(String name, String email, int age);
-    Optional<User> findUserById(Long id);
-    Optional<User> findUserByEmail(String email);
-    List<User> findAllUsers();
-    void updateUser(Long id, String name, String email, String ageInput);
+    UserResponseDto createUser(CreateUserRequestDto requestDto);
+    UserResponseDto findUserById(Long id);
+    UserResponseDto findUserByEmail(String email);
+    List<UserResponseDto> findAllUsers();
+    UserResponseDto updateUser(Long id, UpdateUserRequestDto requestDto);
     void deleteUser(Long id);
 
 }
