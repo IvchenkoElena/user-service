@@ -58,7 +58,11 @@ class UserControllerTest {
         requestDto.setEmail(USER_EMAIL);
         requestDto.setAge(USER_AGE);
 
-        UserResponseDto responseDto = new UserResponseDto(USER_ID, USER_NAME, USER_EMAIL, USER_AGE);
+        UserResponseDto responseDto = new UserResponseDto();
+        responseDto.setId(USER_ID);
+        responseDto.setName(USER_NAME);
+        responseDto.setEmail(USER_EMAIL);
+        responseDto.setAge(USER_AGE);
         when(userService.createUser(requestDto)).thenReturn(responseDto);
 
         mockMvc.perform(post("/api/users")
@@ -87,8 +91,12 @@ class UserControllerTest {
 
     @Test
     void getUserById_ReturnsUser_WhenFound() throws Exception {
-        UserResponseDto userDto = new UserResponseDto(USER_ID, USER_NAME, USER_EMAIL, USER_AGE);
-        when(userService.findUserById(USER_ID)).thenReturn(userDto);
+        UserResponseDto responseDto = new UserResponseDto();
+        responseDto.setId(USER_ID);
+        responseDto.setName(USER_NAME);
+        responseDto.setEmail(USER_EMAIL);
+        responseDto.setAge(USER_AGE);
+        when(userService.findUserById(USER_ID)).thenReturn(responseDto);
 
         mockMvc.perform(get("/api/users/{id}", USER_ID)
                         .accept(MediaType.APPLICATION_JSON))
@@ -115,8 +123,12 @@ class UserControllerTest {
 
     @Test
     void getUserByEmail_ReturnsUser_WhenFound() throws Exception {
-        UserResponseDto userDto = new UserResponseDto(USER_ID, USER_NAME, USER_EMAIL, USER_AGE);
-        when(userService.findUserByEmail(USER_EMAIL)).thenReturn(userDto);
+        UserResponseDto responseDto = new UserResponseDto();
+        responseDto.setId(USER_ID);
+        responseDto.setName(USER_NAME);
+        responseDto.setEmail(USER_EMAIL);
+        responseDto.setAge(USER_AGE);
+        when(userService.findUserByEmail(USER_EMAIL)).thenReturn(responseDto);
 
         mockMvc.perform(get("/api/users/email/{email}", USER_EMAIL)
                         .accept(MediaType.APPLICATION_JSON))
@@ -137,9 +149,17 @@ class UserControllerTest {
     }
     @Test
     void getAllUsers_ReturnsAllUsers() throws Exception {
-        List<UserResponseDto> usersList = Arrays.asList(
-                (new UserResponseDto(1L, "Alice", "alice@example.com", 25)),
-                new UserResponseDto(2L, "Bob", "bob@example.com", 35));
+        UserResponseDto responseDto1 = new UserResponseDto();
+        responseDto1.setId(1L);
+        responseDto1.setName("Alice");
+        responseDto1.setEmail("alice@example.com");
+        responseDto1.setAge(25);
+        UserResponseDto responseDto2 = new UserResponseDto();
+        responseDto2.setId(2L);
+        responseDto2.setName("Bob");
+        responseDto2.setEmail("bob@example.com");
+        responseDto2.setAge(35);
+        List<UserResponseDto> usersList = Arrays.asList(responseDto1, responseDto2);
         when(userService.findAllUsers()).thenReturn(usersList);
 
         mockMvc.perform(get("/api/users")
@@ -158,7 +178,11 @@ class UserControllerTest {
         updateDto.setEmail("updated@example.com");
         updateDto.setAge(35);
 
-        UserResponseDto updatedUserDto = new UserResponseDto(USER_ID, "Updated Name", "updated@example.com", 35);
+        UserResponseDto updatedUserDto = new UserResponseDto();
+        updatedUserDto.setId(USER_ID);
+        updatedUserDto.setName("Updated Name");
+        updatedUserDto.setEmail("updated@example.com");
+        updatedUserDto.setAge(35);
         when(userService.updateUser(USER_ID, updateDto)).thenReturn(updatedUserDto);
 
         mockMvc.perform(put("/api/users/{id}", USER_ID)
@@ -177,9 +201,11 @@ class UserControllerTest {
         updateDto.setName("Updated Name");
         updateDto.setAge(25);
 
-        UserResponseDto updatedUserDto = new UserResponseDto(
-                USER_ID, "Updated Name", USER_EMAIL, 25
-        );
+        UserResponseDto updatedUserDto = new UserResponseDto();
+        updatedUserDto.setId(USER_ID);
+        updatedUserDto.setName("Updated Name");
+        updatedUserDto.setEmail(USER_EMAIL);
+        updatedUserDto.setAge(25);
 
         when(userService.updateUser(USER_ID, updateDto)).thenReturn(updatedUserDto);
 

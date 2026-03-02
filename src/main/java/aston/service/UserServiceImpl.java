@@ -11,6 +11,7 @@ import aston.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository repository;
+
+    @Autowired
     private final UserMapper userMapper;
 
     @Override
@@ -32,12 +35,25 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponseDto createUser(CreateUserRequestDto requestDto) {
+        validateRequestData(requestDto);
         validateUniqueEmail(requestDto.getEmail());
         log.info("Создание пользователя: name={}, email={}", requestDto.getName(), requestDto.getEmail());
         User user = userMapper.toEntity(requestDto);
         User savedUser = repository.save(user);
         log.info("Новый пользователь с ID = {} успешно создан", savedUser.getId());
         return userMapper.toDTO(savedUser);
+    }
+
+    private void validateRequestData(CreateUserRequestDto requestDto) {
+        if (requestDto.getName() == null || requestDto.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be empty or null");
+        }
+        if (requestDto.getEmail() == null || !requestDto.getEmail().contains("@")) {
+            throw new IllegalArgumentException("Invalid email format");
+        }
+        if (requestDto.getAge() < 0 || requestDto.getAge() > 120) {
+            throw new IllegalArgumentException("Age must be between 0 and 120");
+        }
     }
 
     private void validateUniqueEmail(String email) {
